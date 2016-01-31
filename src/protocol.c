@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include "protocol.h"
+#include "log.h"
 
 #define MAX_PAYLOAD_LEN 1460
 #define MAX_BUFFER_LEN 3200
@@ -104,6 +105,13 @@ static void drain_buffer(uint32_t msg_len)
     read_buffer.counter -= msg_len + sizeof(uint32_t);
 }
 
+static void dump_peer_info(struct sockaddr_in *addr)
+{
+    char buffer[16];
+    inet_ntop(AF_INET, &addr->sin_addr.s_addr, buffer, 16);
+    log_info("Got a packet from :[%s:%d].", buffer, ntohs(addr->sin_port));
+}
+
 
 int prot_decode_message(int fd, struct message *msg)
 {
@@ -123,6 +131,7 @@ again:
             return -1;
         }
     }
+    dump_peer_info(&msg->peer);
     read_buffer.counter += len;
     if (read_buffer.counter >= sizeof(uint32_t)) {
         uint32_t msg_len = ntohl(*((uint32_t *)read_buffer.buffer));

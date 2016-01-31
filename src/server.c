@@ -166,7 +166,7 @@ static int socket_read(int fd)
     memcpy(client_addr, &msg.peer, sizeof(struct sockaddr_in));
     if (ret == 1 || msg.type == MSG_TYPE_PING) {
         if (msg.type == MSG_TYPE_PING) {
-            inet_ntop(AF_INET, &msg.peer.sin_addr.s_addr, buffer);
+            inet_ntop(AF_INET, &msg.peer.sin_addr.s_addr, buffer, 16);
             log_info("Got a ping from:[%s:%d].", buffer, ntohs(msg.peer.sin_port));
         }
         return 0;
