@@ -163,6 +163,9 @@ static int socket_read(int fd)
     }
     memcpy(client_addr, &msg.peer, sizeof(struct sockaddr_in));
     if (ret == 1 || msg.type == MSG_TYPE_PING) {
+        if (msg.type == MSG_TYPE_PING) {
+            log_info("Got a ping.");
+        }
         return 0;
     }
     if (write(tunfd, msg.payload, msg.payload_len) < 0) {

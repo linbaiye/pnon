@@ -113,6 +113,8 @@ int prot_decode_message(int fd, struct message *msg)
     }
     int len = 0;
 again:
+    memset(&msg->peer, 0, sizeof(struct sockaddr_in));
+    msg->peer.sin_family = AF_INET;
     len = recvfrom(fd, read_buffer.buffer, MAX_BUFFER_LEN - read_buffer.counter, 0, (struct sockaddr*)&msg->peer, &socklen);
     if (len < 0) {
         if (errno == EINTR) {
