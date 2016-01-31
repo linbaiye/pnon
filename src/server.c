@@ -108,9 +108,7 @@ static int init_server_sock(void)
     int enable = 1;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr.s_addr) != 1) {
-        return -1;
-    }
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(SERVER_PORT);
     if ((sockfd = socket(AF_INET, SOCK_NONBLOCK | SOCK_DGRAM, 0)) < 0) {
         log_error("Failed to create socket.");

@@ -14,7 +14,6 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 #include <linux/if_tun.h>
-#include "list.h"
 #include "log.h"
 #include "client.h"
 #include "protocol.h"
@@ -29,7 +28,6 @@ static struct sockaddr_in server_addr;
 static int tunfd = 0;
 static int sockfd = 0;
 
-static struct list_head unack_list;
 
 static int tun_alloc_old(char *dev)
 {
