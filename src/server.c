@@ -149,6 +149,8 @@ again:
 static int socket_read(int fd)
 {
     struct message msg;
+    char buffer[16];
+    uint16_t port = 0;
     int ret = prot_decode_message(fd, &msg);
     if (ret < 0) {
         log_error("Failed to decode message.");
@@ -164,7 +166,8 @@ static int socket_read(int fd)
     memcpy(client_addr, &msg.peer, sizeof(struct sockaddr_in));
     if (ret == 1 || msg.type == MSG_TYPE_PING) {
         if (msg.type == MSG_TYPE_PING) {
-            log_info("Got a ping.");
+            inet_ntop(AF_INET, &msg.peer.sin_addr.s_addr, buffer);
+            log_info("Got a ping from:[%s:%d].", buffer, ntohs(msg.peer.sin_port));
         }
         return 0;
     }
