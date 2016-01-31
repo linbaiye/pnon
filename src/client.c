@@ -198,13 +198,14 @@ int event_loop(void)
     fd_set rd_set;
     int len = 0;
     struct timeval tv;
+    int maxfd = tunfd > sockfd ? tunfd + 1 : sockfd + 1;
     while (1) {
         FD_ZERO(&rd_set);
         FD_SET(tunfd, &rd_set);
         FD_SET(sockfd, &rd_set);
         tv.tv_sec = 5;
         tv.tv_usec = 0;
-        int ret = select(tunfd + 1, &rd_set, NULL, NULL, &tv);
+        int ret = select(maxfd, &rd_set, NULL, NULL, &tv);
         if (ret < 0 && errno == EINTR) {
             continue;
         } else if (ret < 0) {
