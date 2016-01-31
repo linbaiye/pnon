@@ -20,6 +20,7 @@
 
 #define SERVER_PORT 6000
 #define TUNDEV "tuntest"
+#define SERVER_IP "104.238.148.75" 
 #define MAX_EVENTS 2
 #define IFADDR "172.16.1.2"
 
@@ -107,7 +108,7 @@ static int init_server_sock(void)
     int enable = 1;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    if (inet_pton(AF_INET, INADDR_ANY, &server_addr.sin_addr.s_addr) != 1) {
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr.s_addr) != 1) {
         return -1;
     }
     server_addr.sin_port = htons(SERVER_PORT);
