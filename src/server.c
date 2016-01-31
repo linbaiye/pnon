@@ -114,6 +114,7 @@ static int init_server_sock(void)
         log_error("Failed to create socket.");
         return -1;
     }
+    fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
         log_error("Failed to setsockopt.");
         return -1;
@@ -235,7 +236,8 @@ int event_loop(void)
             if (tun_read(tunfd) < 0) {
                 return -1;
             }
-        } else if (FD_ISSET(sockfd, &rd_set)) {
+        }
+        if (FD_ISSET(sockfd, &rd_set)) {
             if (socket_read(sockfd) < 0) {
                 return -1;
             }
