@@ -20,7 +20,7 @@
 
 #define SERVER_PORT 6000
 #define TUNDEV "tuntest"
-#define SERVER_IP "104.238.148.75" 
+#define SERVER_IP "104.238.148.75"
 #define MAX_EVENTS 2
 #define IFADDR "172.16.1.2"
 
@@ -99,7 +99,7 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
         log_error("Failed to encode message.");
         return -1;
     }
-    if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)client_addr, sizeof(server_addr)) < 0) {
         log_error("Failed to send message.");
         return -1;
     }
