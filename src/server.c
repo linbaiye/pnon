@@ -175,6 +175,7 @@ static int socket_read(int fd)
         log_error("Failed to write tunfd.");
         return -1;
     }
+    log_info("Writed to tun.");
     prot_free_message(&msg);
     return 0;
 }

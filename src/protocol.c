@@ -80,13 +80,13 @@ struct message *prot_encode_ping(struct message *msg)
 static int decode_message(uint32_t msg_len, struct message *msg)
 {
     msg->payload_len = msg_len - sizeof(uint32_t) - 1;
-    if (msg->payload_len > 0) {
-        msg->payload = malloc(msg->payload_len);
-        if (!msg->payload) {
-            return -1;
-        }
+    msg->data_len = msg_len;
+    msg->data = malloc(msg->data_len);
+    if (!msg->data) {
+      return -1;
     }
-    int ptr = sizeof(uint32_t);
+    msg->payload = msg->data + sizeof(uint32_t) + 1;
+    int ptr = sizeof(uint32_t); /* Skip the length field. */
     msg->type = *((uint8_t *)(read_buffer.buffer + ptr));
     ++ptr;
     msg->msgid = ntohl(*((uint32_t *)(read_buffer.buffer + ptr)));
