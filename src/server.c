@@ -89,7 +89,11 @@ static int tun_config(char *dev)
 
 static int handle_tun_packet(const char *pkt, int pkt_len)
 {
+    char src[16], dst[16];
     struct iphdr *iph = (struct iphdr*)pkt;
+    inet_ntop(AF_INET, &iph->saddr, src, 16);
+    inet_ntop(AF_INET, &iph->daddr, dst, 16);
+    log_debug("Got a packet from tun:[src:%s,dst:%s], will send to client.", src, dst);
     struct message msg;
     if (!prot_encode_message(pkt, pkt_len, &msg)) {
         log_error("Failed to encode message.");
@@ -127,14 +131,6 @@ static int init_server_sock(void)
     return 0;
 }
 
-static void dump_iphdr_info(const char *buffer)
-{
-    struct iphdr *hdr = (struct iphdr *)buffer;
-    char src[16], dst[16];
-    inet_ntop(AF_INET, &hdr->saddr, src, 16);
-    inet_ntop(AF_INET, &hdr->daddr, dst, 16);
-    log_debug("Got a packet from tun:[src:%s,dst:%s]", src, dst);
-}
 
 static int tun_read(int fd)
 {
@@ -151,7 +147,6 @@ again:
     } else if (len == 0) {
         return -1;
     }
-    dump_iphdr_info(buffer);
     return handle_tun_packet(buffer, len);
 }
 
@@ -181,13 +176,15 @@ static int socket_read(int fd)
         }
         return 0;
     }
-    log_debug("Ready to write to tun.");
-    dump_iphdr_info(msg.payload);
+    struct iphdr *iph = (struct iphdr*)msg.payload;
+    char src[16];
+    inet_ntop(AF_INET, &iph->daddr, buffer, 16);
+    inet_ntop(AF_INET, &iph->saddr, src, 16);
+    log_debug("Packet dst: %s, src: %s, will write it to tun.", buffer, src);
     if (write(tunfd, msg.payload, msg.payload_len) < 0) {
         log_error("Failed to write tunfd.");
         return -1;
     }
-    log_info("Writed to tun.");
     prot_free_message(&msg);
     return 0;
 }

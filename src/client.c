@@ -91,9 +91,10 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
 {
     struct iphdr *iph = (struct iphdr*)pkt;
     struct message msg;
-    char buffer[16];
+    char buffer[16], src[16];
     inet_ntop(AF_INET, &iph->daddr, buffer, 16);
-    log_info("Got packet for: %s", buffer);
+    inet_ntop(AF_INET, &iph->saddr, src, 16);
+    log_debug("Got a packet dst: %s, src: %s, will send it to server.", buffer, src);
     if (!prot_encode_message(pkt, pkt_len, &msg)) {
         log_error("Failed to encode message.");
         return -1;
@@ -118,6 +119,11 @@ static int socket_read(int fd)
     if (ret == 1 || msg.type == MSG_TYPE_PING) {
         return 0;
     }
+    struct iphdr *iph = (struct iphdr*)msg.payload;
+    char buffer[16], src[16];
+    inet_ntop(AF_INET, &iph->daddr, buffer, 16);
+    inet_ntop(AF_INET, &iph->saddr, src, 16);
+    log_debug("Packet dst: %s, src: %s, will write it to tun.", buffer, src);
     if (write(tunfd, msg.payload, msg.payload_len) < 0) {
         log_error("Failed to write tunfd.");
         return -1;
@@ -166,7 +172,6 @@ again:
         log_info("Got error:%s", strerror(errno));
         return -1;
     }
-    dump_iphdr_info(buffer);
     return handle_tun_packet(buffer, len);
 }
 
