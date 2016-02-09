@@ -20,7 +20,7 @@
 
 #define SERVER_PORT 6000
 #define TUNDEV "tuntest"
-#define SERVER_IP "104.238.148.75" 
+#define SERVER_IP "104.238.148.75"
 #define MAX_EVENTS 2
 #define IFADDR "172.16.1.1"
 
@@ -103,6 +103,7 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
         return -1;
     }
     prot_free_message(&msg);
+    return 0;
 }
 
 
@@ -148,9 +149,11 @@ again:
         if (errno == EINTR) {
             goto again;
         } else {
+            log_info("Got error:%s", strerror(errno));
             return -1;
         }
     } else if (len == 0) {
+        log_info("Got error:%s", strerror(errno));
         return -1;
     }
     return handle_tun_packet(buffer, len);
@@ -218,10 +221,12 @@ int event_loop(void)
         }
         if (FD_ISSET(tunfd, &rd_set)) {
             if (tun_read(tunfd) < 0) {
+                log_error("Got error:%s", strerror(errno));
                 return -1;
             }
         } else if (FD_ISSET(sockfd, &rd_set)) {
             if (socket_read(sockfd) < 0) {
+                log_error("socket read error.");
                 return -1;
             }
         }

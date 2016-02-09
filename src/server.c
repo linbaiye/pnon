@@ -100,6 +100,7 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
         return -1;
     }
     prot_free_message(&msg);
+    return 0;
 }
 
 
@@ -243,11 +244,13 @@ int event_loop(void)
         }
         if (FD_ISSET(tunfd, &rd_set)) {
             if (tun_read(tunfd) < 0) {
+                log_error("tun error.");
                 return -1;
             }
         }
         if (FD_ISSET(sockfd, &rd_set)) {
             if (socket_read(sockfd) < 0) {
+                log_error("socket read error.");
                 return -1;
             }
         }
