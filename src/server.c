@@ -181,6 +181,8 @@ static int socket_read(int fd)
         }
         return 0;
     }
+    log_debug("Ready to write to tun.");
+    dump_iphdr_info(msg.payload);
     if (write(tunfd, msg.payload, msg.payload_len) < 0) {
         log_error("Failed to write tunfd.");
         return -1;
