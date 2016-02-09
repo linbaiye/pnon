@@ -99,9 +99,11 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
         log_error("Failed to encode message.");
         return -1;
     }
-    if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)client_addr, sizeof(server_addr)) < 0) {
-        log_error("Failed to send message.");
-        return -1;
+    for (int i = 0; i < 3; i++) {
+        if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)client_addr, sizeof(server_addr)) < 0) {
+            log_error("Failed to send message.");
+            return -1;
+        }
     }
     prot_free_message(&msg);
     return 0;
