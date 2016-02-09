@@ -127,6 +127,14 @@ static int init_server_sock(void)
     return 0;
 }
 
+static void dump_iphdr_info(const char *buffer)
+{
+    struct iphdr *hdr = (struct iphdr *)buffer;
+    char src[16], dst[16];
+    inet_ntop(AF_INET, &hdr->saddr, src, 16);
+    inet_ntop(AF_INET, &hdr->daddr, dst, 16);
+    log_debug("Got a packet from tun:[src:%s,dst:%s]", src, dst);
+}
 
 static int tun_read(int fd)
 {
@@ -143,6 +151,7 @@ again:
     } else if (len == 0) {
         return -1;
     }
+    dump_iphdr_info(buffer);
     return handle_tun_packet(buffer, len);
 }
 
