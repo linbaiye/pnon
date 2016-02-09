@@ -22,6 +22,7 @@ void prot_free_message(struct message *msg)
 {
     if (msg && msg->data) {
         free(msg->data);
+        msg->data = NULL;
     }
 }
 
@@ -115,14 +116,13 @@ static void dump_peer_info(struct sockaddr_in *addr)
 
 int prot_decode_message(int fd, struct message *msg)
 {
-    int socklen = 0;
+    int socklen = sizeof(struct sockaddr_in);
     if (msg == NULL) {
         return -1;
     }
     int len = 0;
 again:
     memset(&msg->peer, 0, sizeof(struct sockaddr_in));
-    msg->peer.sin_family = AF_INET;
     len = recvfrom(fd, read_buffer.buffer, MAX_BUFFER_LEN - read_buffer.counter, 0, (struct sockaddr*)&msg->peer, &socklen);
     if (len < 0) {
         if (errno == EINTR) {
