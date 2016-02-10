@@ -1,7 +1,7 @@
 
 all: client server
 
-CFLAGS += -std=c99 -g -O0
+CFLAGS += -std=c99 -g -O0 -D_GNU_SOURCE
 
 client: log.o client_main.o protocol.o client.o
 	gcc -o $@ $^
