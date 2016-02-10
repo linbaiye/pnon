@@ -100,11 +100,14 @@ static int handle_tun_packet(const char *pkt, int pkt_len)
         return -1;
     }
     for (int i = 0; i < 2; i++) {
-        if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-            log_error("Failed to send message.");
+        int ret = sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        if (ret < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            usleep(200);
+            continue;
+        } else if (ret < 0) {
+            log_error("Failed to send message:%s.", strerror(errno));
             return -1;
         }
-        usleep(100);
     }
     prot_free_message(&msg);
     return 0;

@@ -220,9 +220,15 @@ static int send_ping(void)
         log_error("Failed to encode ping.");
         return -1;
     }
-    if (sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)client_addr, sizeof(struct sockaddr_in)) < 0) {
-        log_error("Failed to write socket fd:%s.", strerror(errno));
-        return -1;
+    for (int i = 0; i < 2; i++) {
+        int ret = sendto(sockfd, msg.data, msg.data_len, 0, (struct sockaddr *)client_addr, sizeof(struct sockaddr_in));
+        if (ret < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            usleep(200);
+            continue;
+        } else if (ret < 0) {
+          log_error("Failed to write socket fd:%s.", strerror(errno));
+          return -1;
+        }
     }
     log_info("Sent ping.");
     return 0;
