@@ -21,4 +21,5 @@ extern struct message *prot_encode_ping(struct message *);
 extern void prot_init(void);
 extern int prot_decode_message(int fd, struct message *msg);
 extern void prot_free_message(struct message *msg);
+#define MAX_PAYLOAD_LEN 1460
 #endif
