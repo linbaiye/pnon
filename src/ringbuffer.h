@@ -7,4 +7,6 @@ struct ringbuffer {
     char *rear;
     int32_t capacity;
 };
+extern struct ringbuffer *rb_new(int32_t size);
+extern struct ringbuffer *rb_read(int fd, struct ringbuffer *rb);
 #endif
