@@ -20,6 +20,9 @@ struct connection {
     int udp_fd;
     int tcp_fd;
     int state;
+    int tcp_err;
+    int udp_err;
 };
+
 
 #endif

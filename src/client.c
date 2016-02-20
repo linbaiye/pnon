@@ -79,7 +79,7 @@ static int tun_config(char *dev)
     if (system(buffer) != 0) {
         return -1;
     }
-    sprintf(buffer, "ip link set mtu 1400 dev %s", dev);
+    sprintf(buffer, "ip link set mtu %d dev %s", PROT_MTU, dev);
     if (system(buffer) != 0) {
         return -1;
     }

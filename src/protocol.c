@@ -7,15 +7,8 @@
 #include "protocol.h"
 #include "log.h"
 
-#define MAX_BUFFER_LEN 3200
 
-struct {
-    char buffer[MAX_BUFFER_LEN];
-    int counter;
-} read_buffer;
-
-static uint32_t msgid;
-
+static uint32_t msgid = 0;
 
 void prot_free_message(struct message *msg)
 {
@@ -26,30 +19,38 @@ void prot_free_message(struct message *msg)
 }
 
 
-/*
- * |-> length <-|-> type <-|-> msg id <-|-> payload <-|
- * The length does not include the size of the length field.
- */
-struct message *prot_encode_message(const char *payload, int payload_len, struct message *msg)
+static int encode_header(struct message *msg, int payload_len, uint8_t type)
 {
-    if (!payload || payload_len < 0 || payload_len > MAX_PAYLOAD_LEN || !msg) {
-        return NULL;
-    }
-    msg->data_len = payload_len + sizeof(uint32_t) + sizeof(uint32_t) + 1;
+    msg->data_len = payload_len + PROT_HDR_LEN;
     msg->data = malloc(msg->data_len);
     if (!msg->data) {
-        return NULL;
+        return -1;
     }
     msg->msgid = msgid++;
-    uint32_t net_uint32 = htonl(payload_len + sizeof(uint32_t) + 1);
+    uint32_t net_uint32 = htonl(msg->data_len);
     int ptr = 0;
     memcpy(msg->data + ptr, &net_uint32, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
-    msg->data[ptr++] = MSG_TYPE_DATA;
+    msg->data[ptr++] = PROT_CUR_VER;
+    msg->data[ptr++] = type;
     net_uint32 = htonl(msg->msgid);
     memcpy(msg->data + ptr, &net_uint32, sizeof(uint32_t));
-    ptr += sizeof(uint32_t);
-    memcpy(msg->data + ptr, payload, payload_len);
+    return 0;
+}
+
+
+/*
+ * |-> length <-|-> version <-|-> type <-|-> msg id <-|-> payload <-|
+ */
+struct message *prot_encode_message(const char *payload, int payload_len, struct message *msg)
+{
+    if (!payload || payload_len <= 0 || payload_len > PROT_MTU || !msg) {
+        return NULL;
+    }
+    if (encode_header(msg, payload_len, PROT_TYPE_DATA) < 0) {
+        return NULL;
+    }
+    memcpy(msg->data + PROT_HDR_LEN, payload, payload_len);
     return msg;
 }
 
@@ -59,95 +60,68 @@ struct message *prot_encode_ping(struct message *msg)
     if (!msg) {
         return NULL;
     }
-    msg->data_len = sizeof(uint32_t) + 1 + sizeof(uint32_t);
-    msg->data = malloc(msg->data_len);
-    if (!msg->data) {
+    if (encode_header(msg, 0, PROT_TYPE_PING) < 0) {
         return NULL;
     }
-    uint32_t net_uint32 = htonl(sizeof(uint32_t) + 1);
-    int ptr = 0;
-    memcpy(msg->data + ptr, &net_uint32, sizeof(uint32_t));
-    ptr += sizeof(uint32_t);
-    msg->data[ptr++] = MSG_TYPE_PING;
-    msg->msgid = msgid++;
-    net_uint32 = htonl(msg->msgid);
-    memcpy(msg->data + ptr, &net_uint32, sizeof(uint32_t));
     return msg;
 }
 
 
-static int decode_message(uint32_t msg_len, struct message *msg)
+
+int prot_has_complete_message(const char *buff, uint32_t buff_len)
 {
-    msg->payload_len = msg_len - sizeof(uint32_t) - 1;
-    msg->data_len = msg_len;
-    msg->data = malloc(msg->data_len);
-    if (!msg->data) {
-      return -1;
+    if (!buff || buff_len < PROT_HDR_LEN) {
+        return 0;
     }
-    msg->payload = msg->data + sizeof(uint32_t) + 1;
-    int ptr = sizeof(uint32_t); /* Skip the length field. */
-    msg->type = *((uint8_t *)(read_buffer.buffer + ptr));
-    ++ptr;
-    msg->msgid = ntohl(*((uint32_t *)(read_buffer.buffer + ptr)));
-    if (msg->payload_len > 0) {
-        ptr += sizeof(uint32_t);
-        memcpy(msg->payload, read_buffer.buffer + ptr, msg->payload_len);
-    }
-    return 0;
+    uint32_t msg_len = ntohl(*((uint32_t *)buff));
+    return buff_len >= msg_len;
 }
 
 
-static void drain_buffer(uint32_t msg_len)
+/*
+ * Return value:
+ * @-1 bad param passed or malloc() fails.
+ * @0, it's a malformed message.
+ * @>0, we've got a full message and the length of the message is returned.
+ */
+int prot_decode_message(struct message *msg, const char *buff, uint32_t buff_len)
 {
-    for (int i = 0, j = msg_len + sizeof(uint32_t); j < read_buffer.counter; i++, j++) {
-        read_buffer.buffer[i] = read_buffer.buffer[j];
-    }
-    read_buffer.counter -= msg_len + sizeof(uint32_t);
-}
-
-static void dump_peer_info(struct sockaddr_in *addr)
-{
-    char buffer[16];
-    inet_ntop(AF_INET, &addr->sin_addr.s_addr, buffer, 16);
-    log_debug("Got a packet from :[%s:%d].", buffer, ntohs(addr->sin_port));
-}
-
-
-int prot_decode_message(int fd, struct message *msg)
-{
-    int socklen = sizeof(struct sockaddr_in);
-    if (msg == NULL) {
+    if (!msg || !prot_has_complete_message(buff, buff_len)) {
         return -1;
     }
-    int len = 0;
-again:
-    memset(&msg->peer, 0, sizeof(struct sockaddr_in));
-    len = recvfrom(fd, read_buffer.buffer, MAX_BUFFER_LEN - read_buffer.counter, 0, (struct sockaddr*)&msg->peer, &socklen);
-    if (len < 0) {
-        if (errno == EINTR) {
-            goto again;
-        } else {
-            return -1;
-        }
+    uint32_t msg_len = ntohl(*((uint32_t *)buff));
+    msg->data = malloc(msg_len);
+    if (!msg->data) {
+        return -1;
     }
-    dump_peer_info(&msg->peer);
-    read_buffer.counter += len;
-    if (read_buffer.counter >= sizeof(uint32_t)) {
-        uint32_t msg_len = ntohl(*((uint32_t *)read_buffer.buffer));
-        if (msg_len <= read_buffer.counter - sizeof(uint32_t)) {
-            if (decode_message(msg_len, msg) < 0) {
-                return -1;
-            }
-            drain_buffer(msg_len);
+    msg->msg_len = msg_len;
+    memcpy(msg->data, buff, msg->msg_len);
+    int ptr = sizeof(uint32_t);
+    msg->version = (uint8_t)msg->data[ptr++];
+    if (msg->version != PROT_CUR_VER) {
+        free(msg->data);
+        return 0;
+    }
+    msg->type = (uint8_t)msg->data[ptr++];
+    if (msg->type != PROT_TYPE_DATA && msg->type != PROT_TYPE_PING) {
+        free(msg->data);
+        return 0;
+    }
+    msg->msgid = ntohl(*((uint32_t *)msg->data));
+    ptr += sizeof(uint32_t);
+    if (msg->type == PROT_TYPE_DATA) {
+        msg->payload = msg->data + ptr;
+        msg->payload_len = msg->data_len - PROT_HDR_LEN;
+        if (msg->payload_len == 0) {
+            free(msg->data);
             return 0;
         }
     }
-    return 1;
+    return msg->data_len;
 }
 
 
 void prot_init(void)
 {
-    read_buffer.counter = 0;
     msgid = 0;
 }

@@ -56,12 +56,20 @@ int32_t rb_available(struct ringbuffer *rb)
     return calc_unused_space(rb, 0);
 }
 
+int32_t rb_is_full(struct ringbuffer *rb)
+{
+    if (!rb) {
+        return 1;
+    }
+    return calc_unused_space(rb, 0) == 0;
+}
+
 
 /*
  * Return value:
- * @ >0, the actual bytes being read.
+ * @>0, the actual bytes being read.
  * @-1, an error occurrs.
- * @0, the buffer is full.
+ * @0, the buffer is buff or there is nothing to read, call rb_is_full to figure out.
  * Param:
  * @peer, if this is not null, the routine will use recvfrom() to get the peer's
  * socket info and store it in @peer.
@@ -87,7 +95,7 @@ int rb_recvfrom(int fd, struct ringbuffer *rb, struct sockaddr_in *peer)
         if (len < 0) {
             if (errno == EINTR) {
                 continue;
-            }
+            } 
             return (errno == EAGAIN || errno == EWOULDBLOCK) ? copied : -1;
         } else if (len == 0) {
             return -1;
@@ -123,7 +131,7 @@ static int32_t calc_used_space(struct ringbuffer *rb, int continuous)
 }
 
 
-int32_t rb_get_used_bytes(struct ringbuffer *rb)
+int32_t rb_length(struct ringbuffer *rb)
 {
     if (!rb) {
         return -1;
@@ -144,7 +152,7 @@ static int32_t drain_cached_bytes(struct ringbuffer *rb, void *dst,
         bytes_to_copy = bytes_to_copy > size ? size: bytes_to_copy;
         if (dst != NULL) {
             memcpy((char *)dst + copied, rb->head, bytes_to_copy);
-        } else {
+        } else if (fd >= 0) {
             int ret;
             if (peer != NULL) {
                 ret = sendto(fd, rb->head, bytes_to_copy, 0,
@@ -171,12 +179,12 @@ static int32_t drain_cached_bytes(struct ringbuffer *rb, void *dst,
 }
 
 
-int32_t rb_drain(struct ringbuffer *rb, void *dst, int32_t size)
+int32_t rb_drop(struct ringbuffer *rb, int32_t size)
 {
-    if (!rb || !dst || size <= 0) {
+    if (!rb || size <= 0) {
         return -1;
     }
-    return drain_cached_bytes(rb, dst, size, -1, NULL);
+    return drain_cached_bytes(rb, NULL, size, -1, NULL);
 }
 
 
@@ -199,6 +207,17 @@ int32_t rb_sendto(int fd, struct ringbuffer *rb, int32_t size, struct sockaddr_i
     }
     return drain_cached_bytes(rb, NULL, size, fd, peer);
 }
+
+
+void rb_reset(struct ringbuffer *rb)
+{
+    if (rb) {
+        rb->head = rb->buffer;
+        rb->rear = rb->buffer;
+    }
+}
+
+
 
 int32_t rb_write(int fd, struct ringbuffer *rb, int32_t size)
 {
